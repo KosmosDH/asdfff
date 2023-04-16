@@ -1,0 +1,275 @@
+// Начало кода
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+using namespace std;
+
+// Константы для размера карты и символов
+const int MAP_WIDTH = 50;
+const int MAP_HEIGHT = 50;
+const char WALL = '#';
+const char FLOOR = '.';
+const char PLAYER = '@';
+const char ENEMY = 'E';
+const char TREASURE = 'T';
+
+// Класс для представления сущности на карте
+class Entity {
+public:
+    // Конструктор с параметрами
+    Entity(int x, int y, char symbol) {
+        this->x = x;
+        this->y = y;
+        this->symbol = symbol;
+    }
+
+    // Геттеры и сеттеры для координат и символа
+    int getX() {
+        return x;
+    }
+
+    int getY() {
+        return y;
+    }
+
+    char getSymbol() {
+        return symbol;
+    }
+
+    void setX(int x) {
+        this->x = x;
+    }
+
+    void setY(int y) {
+        this->y = y;
+    }
+
+    void setSymbol(char symbol) {
+        this->symbol = symbol;
+    }
+
+private:
+    // Поля для координат и символа
+    int x;
+    int y;
+    char symbol;
+};
+
+// Класс для представления карты игры
+class Map
+{
+public:
+    const char DOOR = 'D';
+    // Конструктор без параметров
+    Map() {
+        // Инициализация генератора случайных чисел
+        srand(time(NULL));
+        // Создание двумерного массива символов для карты
+        map = new char* [MAP_HEIGHT];
+        for (int i = 0; i < MAP_HEIGHT; i++) {
+            map[i] = new char[MAP_WIDTH];
+        }
+        // Заполнение карты стенами и полом
+        for (int i = 0; i < MAP_HEIGHT; i++) 
+        {
+            for (int j = 0; j < MAP_WIDTH; j++) {
+                if (i == 0 || i == MAP_HEIGHT - 1 || j == 0 || j == MAP_WIDTH - 1) {
+                    map[i][j] = WALL; // Стена по краям карты
+                }
+                else {
+                    map[i][j] = FLOOR; // Пол внутри карты
+                }
+            }
+
+           
+        }
+        // Создание игрока в центре карты
+        player = new Entity(MAP_WIDTH / 2, MAP_HEIGHT / 2, PLAYER);
+        // Добавление игрока на карту
+        map[player->getY()][player->getX()] = player->getSymbol();
+        // Создание врага в случайном месте на карте
+        enemy = new Entity(rand() % (MAP_WIDTH - 2) + 1, rand() % (MAP_HEIGHT - 2) + 1, ENEMY);
+        // Проверка, чтобы враг не появился на месте игрока или стены
+        while (map[enemy->getY()][enemy->getX()] != FLOOR) {
+            enemy->setX(rand() % (MAP_WIDTH - 2) + 1);
+            enemy->setY(rand() % (MAP_HEIGHT - 2) + 1);
+        }
+        // Добавление врага на карту
+        map[enemy->getY()][enemy->getX()] = enemy->getSymbol();
+        // Создание сокровища в случайном месте на карте
+        treasure = new Entity(rand() % (MAP_WIDTH - 2) + 1, rand() % (MAP_HEIGHT - 2) + 1, TREASURE);
+        // Проверка, чтобы сокровище не появилось на месте игрока, врага или стены
+        while (map[treasure->getY()][treasure->getX()] != FLOOR) {
+        }
+        // Добавление сокровища на карту
+        map[treasure->getY()][treasure->getX()] = treasure->getSymbol();
+        // Установка флага игры в истину
+        game = true;
+
+        door = new Entity(rand() % (MAP_WIDTH - 2) + 1, rand() % (MAP_HEIGHT - 2) + 1, DOOR);
+        // Проверка, чтобы дверь не появилась на месте игрока, врага, сокровища или стены
+        while (map[door->getY()][door->getX()] != FLOOR) {
+            door->setX(rand() % (MAP_WIDTH - 2) + 1);
+            door->setY(rand() % (MAP_HEIGHT - 2) + 1);
+        }
+        // Добавление двери на карту
+        map[door->getY()][door->getX()] = door->getSymbol();
+    }
+
+    // Деструктор
+    ~Map() {
+        // Освобождение памяти от массива карты
+        for (int i = 0; i < MAP_HEIGHT; i++) {
+            delete[] map[i];
+        }
+        delete[] map;
+        // Освобождение памяти от сущностей
+        delete player;
+        delete enemy;
+        delete treasure;
+    }
+
+    // Метод для отрисовки карты на экране
+    void draw() {
+        // Очистка экрана
+        system("cls");
+        // Вывод карты построчно
+        for (int i = 0; i < MAP_HEIGHT; i++) {
+            for (int j = 0; j < MAP_WIDTH; j++) {
+                cout << map[i][j];
+            }
+            cout << endl;
+        }
+    }
+
+    // Метод для обработки ввода пользователя
+    void input() {
+        // Объявление переменной для хранения ввода
+        char input;
+        // Считывание ввода с клавиатуры
+        cin >> input;
+        // Обработка ввода в зависимости от нажатой клавиши
+        switch (input) {
+        case 'w': // Если нажата клавиша w, то попытаться переместить игрока вверх
+            move(player, 0, -1);
+            break;
+        case 'a': // Если нажата клавиша a, то попытаться переместить игрока влево
+            move(player, -1, 0);
+            break;
+        case 's': // Если нажата клавиша s, то попытаться переместить игрока вниз
+            move(player, 0, 1);
+            break;
+        case 'd': // Если нажата клавиша d, то попытаться переместить игрока вправо
+            move(player, 1, 0);
+            break;
+        case 'q': // Если нажата клавиша q, то выйти из игры
+            game = false;
+            break;
+        default: // Если нажата другая клавиша, то ничего не делать
+            break;
+        }
+    }
+
+    // Метод для перемещения сущности по карте
+    void move(Entity* entity, int dx, int dy) {
+        // Получение текущих координат сущности
+        int x = entity->getX();
+        int y = entity->getY();
+        // Вычисление новых координат сущности
+        int newX = x + dx;
+        int newY = y + dy;
+        // Проверка, что новые координаты не выходят за границы карты и не сталкиваются со стеной
+        if (newX >= 0 && newX < MAP_WIDTH && newY >= 0 && newY < MAP_HEIGHT && map[newY][newX] != WALL) {
+            // Стирание символа сущности с текущего места на карте
+            map[y][x] = FLOOR;
+            // Перемещение сущности на новое место на карте
+            entity->setX(newX);
+            entity->setY(newY);
+            // Отрисовка символа сущности на новом месте на карте
+            map[newY][newX] = entity->getSymbol();
+            // Проверка, что сущность не столкнулась с другой сущностью
+            checkCollision(entity);
+        }
+    }
+    // Метод для проверки столкновения сущности с другой сущностью
+    void checkCollision(Entity* entity) {
+        // Если сущность - игрок
+        if (entity == player) {
+            // Проверка, что игрок не столкнулся с врагом
+            if (player->getX() == enemy->getX() && player->getY() == enemy->getY()) {
+                // Вывод сообщения о проигрыше и завершение игры
+                cout << "You have been killed by the enemy!" << endl;
+                game = false;
+            }
+            // Проверка, что игрок не столкнулся с сокровищем
+            if (player->getX() == treasure->getX() && player->getY() == treasure->getY()) {
+                // Вывод сообщения о победе и завершение игры
+                cout << "You have found the treasure!" << endl;
+                game = false;
+            }
+        }
+        // Если сущность - враг
+        if (entity == enemy) {
+            // Проверка, что враг не столкнулся с игроком
+            if (enemy->getX() == player->getX() && enemy->getY() == player->getY()) {
+                // Вывод сообщения о проигрыше и завершение игры
+                cout << "You have been killed by the enemy!" << endl;
+                game = false;
+            }
+        }
+        // Если сущность - игрок
+        if (entity == player) {
+            // Проверка, что игрок не столкнулся с дверью
+            if (player->getX() == door->getX() && player->getY() == door->getY()) {
+                // Вывод сообщения о побеге и завершение игры
+                cout << "You have escaped from the enemy!" << endl;
+                game = false;
+            }
+        }
+    }
+
+    // Метод для обновления логики игры
+    void update() {
+        // Получение координат игрока и врага
+        int px = player->getX();
+        int py = player->getY();
+        int ex = enemy->getX();
+        int ey = enemy->getY();
+        // Вычисление направления движения врага по горизонтали и вертикали
+        int dx = (px > ex) ? 1 : (px < ex) ? -1 : 0;
+        int dy = (py > ey) ? 1 : (py < ey) ? -1 : 0;
+        // Перемещение врага в направлении игрока
+        move(enemy, dx, dy);
+    }
+
+    // Метод для проверки состояния игры
+    bool isGame() {
+        return game;
+    }
+
+  private:
+      // Поля для хранения карты и сущностей
+      Entity* door;
+      char** map;
+      Entity* player;
+      Entity* enemy;
+      Entity* treasure;
+      bool game; // Флаг для состояния игры
+};
+
+// Главная функция программы
+int main() {
+    // Создание объекта карты
+    Map map;
+    // Цикл игры
+    while (map.isGame()) {
+        // Отрисовка карты на экране
+        map.draw();
+        // Обработка ввода пользователя
+        map.input();
+        // Обновление логики игры
+        map.update();
+    }
+    // Возврат нуля при успешном завершении программы
+    return 0;
+}
